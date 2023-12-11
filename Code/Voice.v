@@ -2,6 +2,7 @@ module Voice (
     input rst,
     input clk,
     input div_22,
+    input state,
     output audio_mclk, 
     output audio_lrck, 
     output audio_sck,  

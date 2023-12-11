@@ -3,15 +3,15 @@ module Keyboard (
 	input clk,
     inout PS2_DATA,
 	inout PS2_CLK,
-    output key_num,
+    output [2:0] key_num,
     output key
 );
-
+//up down left right enter
     
 endmodule 
 
 module KeyboardDecoder(
-	output reg [511:0] key_down,
+	output reg [511:0] key_down, //查過按鍵後最好調整一下大小，節省空間
 	output wire [8:0] last_change,
 	output reg key_valid,
 	inout wire PS2_DATA,
