@@ -7,7 +7,7 @@ module Keyboard (
     output key
 );
 //up down left right enter
-    
+    KeyboardDecoder k1()
 endmodule 
 
 module KeyboardDecoder(
