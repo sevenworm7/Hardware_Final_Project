@@ -1,45 +1,52 @@
-module Keyboard (
+module Keyboard ( //use "w" "a" "s" "d" "enter" to comtrol the game
     input rst,
 	input clk,
     inout PS2_DATA,
 	inout PS2_CLK,
-    output reg [2:0] key_num
+    output reg [2:0] key_num,
+    output reg key
 );
-//up down left right enter (use wasd)
-	wire [511:0] key_down;
+	parameter [8:0] UP    = 9'b0_0001_1101; //w //1D
+	parameter [8:0] LEFT  = 9'b0_0001_1100; //a //1C
+	parameter [8:0] DOWN  = 9'b0_0001_1011; //s //1B
+	parameter [8:0] RIGHT = 9'b0_0010_0011; //d //23
+	parameter [8:0] ENTER = 9'b0_0101_1010;     //5A
+
+	wire [101:0] key_down;
 	wire [8:0] last_change;
 	wire been_ready;
-    KeyboardDecoder k1(.key_down(key_down),.last_change(last_change),.key_valid(been_ready),.PS2_DATA(PS2_DATA),.PS2_CLK(PS2_CLK),.rst(rst),.clk(clk));
 
-	reg [2:0]keyin;
+	always @(posedge clk) begin //按鍵按下會持續為1
+		if(been_ready && key_down[last_change] == 1'b1) key <= 1;
+        else if(key_down == 0) key <= 0;
+        else key <= key;
+	end
+
+	KeyboardDecoder kd(
+		.key_down(key_down),
+		.last_change(last_change),
+		.key_valid(been_ready),
+		.PS2_DATA(PS2_DATA),
+		.PS2_CLK(PS2_CLK),
+		.rst(rst),
+		.clk(clk)
+	);
+
 	always @(*) begin
 		case (last_change)
-			9'b0_0001_1101:  keyin <= 1; //w
-			9'b0_0001_1100:  keyin <= 2; //a
-			9'b0_0001_1011:  keyin <= 3; //s
-			9'b0_0010_0011:  keyin <= 4; //d
-			9'b0_0101_1010:  keyin <= 5; //enter
-			default: keyin <= 0;
+			UP      : key_num = 3'd0;
+			LEFT    : key_num = 3'd1;
+			DOWN    : key_num = 3'd2;
+			RIGHT   : key_num = 3'd3;
+			ENTER   : key_num = 3'd4;
+			default : key_num = 3'd5;
 		endcase
 	end
-
-
-	always @(posedge clk or posedge rst) begin
-		if(rst) begin
-			key_num =0;
-		end else begin
-			if(been_ready && key_down[last_change]) begin
-				key_num = keyin;
-			end else if(been_ready && !key_down[last_change]) begin
-				key_num = 0;
-			end
-		end
-	end
-
+    
 endmodule 
 
 module KeyboardDecoder(
-	output reg [511:0] key_down, //查過按鍵後最好調整一下大小，節省空間
+	output reg [101:0] key_down, 
 	output wire [8:0] last_change,
 	output reg key_valid,
 	inout wire PS2_DATA,
@@ -67,7 +74,7 @@ module KeyboardDecoder(
     wire valid;
     wire err;
     
-    wire [511:0] key_decode = 1 << last_change;
+    wire [101:0] key_decode = 1 << last_change;
     assign last_change = {key[9], key[7:0]};
     
     KeyboardCtrl_0 inst (
