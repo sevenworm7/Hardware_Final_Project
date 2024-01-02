@@ -2,6 +2,7 @@ module Clock_divider #(parameter n = 27)(
     input wire clk,
     output wire div_2,
     output wire div_15, 
+    output wire div_22,
     output wire div_hsec
 );
     reg [n-1:0] num;
@@ -12,6 +13,7 @@ module Clock_divider #(parameter n = 27)(
 
     assign div_2 = num[1];
     assign div_15 = num[14];
+    assign div_22 = num[21];
 
     second_divider sd(.clk(clk), .div_hsec(div_hsec));
 endmodule

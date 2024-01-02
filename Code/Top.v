@@ -1,29 +1,3 @@
-//Code盡量寫簡潔一點，一方面方便看，一方面減少記憶體消耗之類
-/*
-整體流程:
-    state == INIT: (按enter後等3秒進入GAME state)
-        led: 全暗，等三秒時每秒: 全亮->全暗
-        screen: 顯示press start之類?? (遊戲比較偏黑暗風，配色以紅黑為主?)，等三秒時全黑?
-        7_seg: 顯示 "----"，等三秒時顯示3->2->1
-        voice: 播放主題曲，可以考慮雙耳都播鋼琴右手，進遊戲在切成雙耳不同旋律，等三秒時把音樂關掉
-    state == GAME:
-        led: 顯示角色血量，初始7點
-        screen: 
-            地圖:
-                開個陣列之類存簡化版地圖，後用一小段線條重複複製貼上來做迷宮
-                沿著線走的迷宮應該就可以了(可能黑底走紅線之類?隨意)(垂直跟水平線就好)
-                先將遊戲控制在一個螢幕的畫面就好
-                只要顯示角色四周一定範圍的地圖就好，旁邊慢慢變黑之類?
-                先把地圖架構弄出來就好，其他東西可以之後再弄
-            角色:
-                我覺得現在先做單張圖的就好，要做任何換圖的之後再弄比較好
-                那兩張圖要裁背景感覺挺難，可以考慮弄個圓形大頭貼之類(picture有放試圖)
-                應該用上下左右操控就好(所以地圖用直線橫線就好)
-                備案: 圖片可以考慮一顆頭就好(看上看下看左看右之類)(找外部圖丟進去用)
-        7_seg: 顯示倒數計時
-        voice: 從頭播放主題曲，音效可以之後再弄
-*/
-
 module Top (
     input clk,
     input rst,         //btn_c
@@ -45,30 +19,62 @@ module Top (
     output audio_sdin  //voice
 );
     //parameter
-    parameter INIT = 1'b0;
-    parameter GAME = 1'b1;
+    parameter INIT = 3'b000;
+    parameter WAIT = 3'b001;
+    parameter GAME = 3'b010;
+    parameter WIN  = 3'b011;
+    parameter LOSE = 3'b100;
+    parameter [2:0] UP    = 3'd0; 
+	parameter [2:0] LEFT  = 3'd1; 
+	parameter [2:0] DOWN  = 3'd2; 
+	parameter [2:0] RIGHT = 3'd3; 
+	parameter [2:0] ENTER = 3'd4; 
 
     //declaration
-    wire div_2, div_15, div_hsec; //半秒clk
+    wire div_2, div_15, div_22, div_hsec; //半秒clk
     wire volUP, volDOWN;
-    wire [15:0] num;
     wire [2:0] key_num;
-    wire key; //been_ready && key_down[last_change] == 1'b1
+    wire key; //按鍵按下會持續為1
+    wire [2:0] volume; //1~5 和 靜音0
+    wire [8:0] charactor_h, charactor_v;
+    wire charactor_dir; 
+    wire [0:899] map; //320*240 -> 20*15 //(h+20*v)*3 (每格有3bit可使用) //跟screen同方向
+    reg [3:0] three_sec_cnt;
+    reg time_left_cnt;
     reg [3:0] time_left [0:2]; //time_left[2]: min //time_left[1]: sec //time_left[0]: sec
     reg [2:0] curr_hp; //max: 7
-    reg state; //0:wait to start, 1:play
-    reg [2:0] map [0:300]; //320*240 -> 20*15 //h+20*v //跟screen同方向
+    reg [2:0] state;
+    reg [15:0] num;
 
     //state control
+    always @(posedge div_hsec) 
+        three_sec_cnt <= ((state == WAIT) ? (three_sec_cnt + 1) : 1'b0);
     always @(posedge clk or posedge rst) begin
         if(rst) state <= INIT;
         else begin
             case (state)
                 INIT: begin
-                    //do
+                    if(key && (key_num == ENTER)) state <= WAIT;
+                    else state <= state;
+                end
+                WAIT: begin
+                    if(three_sec_cnt >= 6) state <= GAME;
+                    else state <= state;
                 end
                 GAME: begin
-                    //do
+                    if(0) state <= WIN; //do
+                    else if((!time_left[0] && !time_left[1] && !time_left[2]) 
+                    || (curr_hp == 1'b0)) 
+                        state <= LOSE;
+                    else state <= state;
+                end
+                WIN: begin
+                    if(key && (key_num == ENTER)) state <= WAIT;
+                    else state <= state;
+                end
+                LOSE: begin
+                    if(key && (key_num == ENTER)) state <= WAIT;
+                    else state <= state;
                 end
                 default: state <= state;
             endcase
@@ -80,6 +86,7 @@ module Top (
         .clk(clk),
         .div_2(div_2),
         .div_15(div_15),
+        .div_22(div_22),
         .div_hsec(div_hsec)
         //add more div_ behind
     );
@@ -93,68 +100,110 @@ module Top (
         .volDOWN(volDOWN)
     );
 
+    //curr_hp
+    always @(posedge clk) begin
+        curr_hp <= 3'd7;
+    end
+
     //led 
     Led led(
         .rst(rst),
 		.clk(clk),
         .div_hsec(div_hsec),
         .state(state),
-        .curr_hp(curr_hp), //showing hp by led
+        .curr_hp(curr_hp),
+        .volume(volume), 
         .LED(LED)
     );
 
+    //time_left control //min sec sec //2 1 0 
+    always @(posedge div_hsec) time_left_cnt <= !time_left_cnt;
+    always @(posedge time_left_cnt) begin
+        if(state == WIN || state == LOSE) begin //維持剩餘時間
+            time_left[2] <= time_left[2];
+            time_left[1] <= time_left[1];
+            time_left[0] <= time_left[0];
+        end
+        else if(state != GAME) begin //4 min 44 sec
+            time_left[2] <= 4'd4;
+            time_left[1] <= 4'd4;
+            time_left[0] <= 4'd4;
+        end
+        else begin
+            time_left[2] <= (((time_left[1]==1'b0) && (time_left[0]==1'b0)) ? (time_left[2]-1) : time_left[2]);
+            time_left[1] <= ((time_left[0]==1'b0) ? (((time_left[1]>0) ? (time_left[1]-1) : 4'd5)) : time_left[1]);
+            time_left[0] <= ((time_left[0]>0) ? (time_left[0]-1) : 4'd9);
+        end
+    end
+
     //7 segment //main for showing time_left 
-    assign num = {4'd0, time_left[2], time_left[1], time_left[0]};
+    always @(posedge clk) begin
+        case (state)
+            INIT: begin
+                num <= {4'd10, 4'd10, 4'd10, 4'd10}; //"----"
+            end
+            WAIT: begin
+                num <= {4'd10, 4'd10, 4'd10, ((4'd7 - three_sec_cnt)>>1)};
+            end
+            GAME: begin
+                num <= {4'd0, time_left[2], time_left[1], time_left[0]};
+            end
+            WIN: begin
+                num <= {4'd0, time_left[2], time_left[1], time_left[0]};
+            end
+            LOSE: begin
+                num <= {4'd10, 4'd10, 4'd10, 4'd10}; //"----"
+            end
+            default: num <= {4'd10, 4'd10, 4'd10, 4'd10}; //"----"
+        endcase
+    end
     Seven_segment seven_segment(
         .rst(rst),
 		.div_15(div_15),
-        .div_hsec(div_hsec), 
-        .state(state),
         .num(num), //16bits, 4 bits a group
         .DISPLAY(DISPLAY),
-        .DIGIT(DISPLAY)
+        .DIGIT(DIGIT)
     );
 
-    //keyboard
+    //keyboard //使用時用 key && key_num 就好
     Keyboard keyboard(
         .rst(rst),
 		.clk(clk),
         .PS2_DATA(PS2_DATA),
 		.PS2_CLK(PS2_CLK),
         .key_num(key_num),
-        .key(key) //been_ready && key_down[last_change] == 1'b1
+        .key(key) //按鍵按下會持續為1
     );
 
     //map
-    /*
-    map有個問題就是如果使用陣列會無法當變數丟到其他module?
-    我目前是考慮把map直接寫在top裡，screen或是charactor要使用map時再用局部的方式傳資訊
-    */
-    //output: map char_movable?
+    Map m(
+        .rst(rst),
+        .clk(clk),
+        .map(map) //20*15 //(h+20*v)*3 (每格有3bit可使用)
+    );
 
     //charactor
-    /*
-    角色移動前要設計一個預計移動點的參數，把它丟到map裡確定可否移動後再移動角色
-    角色可以先考慮一張圖就好，之後要做變化時再把變化資訊丟給screen
-    */
     Charactor charactor(
         .rst(rst),
         .clk(clk),
+        .state(state),
         .key_num(key_num),
         .key(key),
-        .charactor_posi(charactor_posi)
+        .map(map),
+        .charactor_h(charactor_h), //max for 320
+        .charactor_v(charactor_v), //max for 240
+        .charactor_dir(charactor_dir) //0:left, 1:right
     );
 
     //screen 
-    /*
-    這邊我考慮把screen裡面正在掃描的點當ouput送到top，再用一個always block把
-    map跟charactor的資訊整理成一個參數丟到screen裡，screen再根據那個參數判斷顯示什麼??
-    另外有個問題，角色在Screen的移動要精細點，不能照map做很粗略的螢幕切割。。。怎處理?
-    */
     Screen screen(
         .rst(rst),
 		.div_2(div_2), 
         .state(state),
+        .map(map),
+        .charactor_h(charactor_h), //max for 320
+        .charactor_v(charactor_v), //max for 240
+        .charactor_dir(charactor_dir), //0:left, 1:right
         .vgaRed(vgaRed),    
         .vgaGreen(vgaGreen),  
         .vgaBlue(vgaBlue),   
@@ -166,8 +215,12 @@ module Top (
     Voice voice(
         .rst(rst),
         .clk(clk),
-        .div_22(div_22), //一拍16個posedge
+        .div_15(div_15), //音量按鈕用
+        .div_22(div_22), //音樂播放速度
         .state(state),
+        .volUP(volUP),
+        .volDOWN(volDOWN),
+        .volume(volume),
         .audio_mclk(audio_mclk), 
         .audio_lrck(audio_lrck), 
         .audio_sck(audio_sck),  
