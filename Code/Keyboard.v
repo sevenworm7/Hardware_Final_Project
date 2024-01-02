@@ -3,11 +3,39 @@ module Keyboard (
 	input clk,
     inout PS2_DATA,
 	inout PS2_CLK,
-    output [2:0] key_num,
-    output key
+    output reg [2:0] key_num
 );
-//up down left right enter
-    KeyboardDecoder k1()
+//up down left right enter (use wasd)
+	wire [511:0] key_down;
+	wire [8:0] last_change;
+	wire been_ready;
+    KeyboardDecoder k1(.key_down(key_down),.last_change(last_change),.key_valid(been_ready),.PS2_DATA(PS2_DATA),.PS2_CLK(PS2_CLK),.rst(rst),.clk(clk));
+
+	reg [2:0]keyin;
+	always @(*) begin
+		case (last_change)
+			9'b0_0001_1101:  keyin <= 1; //w
+			9'b0_0001_1100:  keyin <= 2; //a
+			9'b0_0001_1011:  keyin <= 3; //s
+			9'b0_0010_0011:  keyin <= 4; //d
+			9'b0_0101_1010:  keyin <= 5; //enter
+			default: keyin <= 0;
+		endcase
+	end
+
+
+	always @(posedge clk or posedge rst) begin
+		if(rst) begin
+			key_num =0;
+		end else begin
+			if(been_ready && key_down[last_change]) begin
+				key_num = keyin;
+			end else if(been_ready && !key_down[last_change]) begin
+				key_num = 0;
+			end
+		end
+	end
+
 endmodule 
 
 module KeyboardDecoder(
