@@ -179,6 +179,7 @@ module Top (
     Map m(
         .rst(rst),
         .clk(clk),
+        .state(state),
         .map(map) //20*15 //(h+20*v)*3 (每格有3bit可使用)
     );
 

@@ -72,12 +72,10 @@ module Screen (
                 else pixel <= pixel_map;
             end 
             WIN: begin
-                if(on_char) pixel <= pixel_char;
-                else pixel <= pixel_map;
+                pixel <= pixel_map;
             end
             LOSE: begin
-                if(on_char) pixel <= pixel_char;
-                else pixel <= pixel_map;
+                pixel <= pixel_map;
             end
             default: pixel <= 0;
         endcase
