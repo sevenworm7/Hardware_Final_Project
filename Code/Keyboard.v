@@ -18,7 +18,7 @@ module Keyboard ( //use "w" "a" "s" "d" "enter" to comtrol the game
 
 	always @(posedge clk) begin //按鍵按下會持續為1
 		if(been_ready && key_down[last_change] == 1'b1) key <= 1;
-        else if(key_down == 0) key <= 0;
+        else if(been_ready && key_down[last_change] == 1'b0) key <= 0;
         else key <= key;
 	end
 
