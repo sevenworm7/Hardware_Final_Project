@@ -62,7 +62,7 @@ module Top (
                     else state <= state;
                 end
                 GAME: begin
-                    if(0) state <= WIN; //do
+                    if(charactor_h>16*13 && charactor_h <16*14 && charactor_v>16*11 && charactor_v <16*12) state <= WIN; //do
                     else if((!time_left[0] && !time_left[1] && !time_left[2]) 
                     || (curr_hp == 1'b0)) 
                         state <= LOSE;
