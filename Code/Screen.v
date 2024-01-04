@@ -62,7 +62,7 @@ module Screen (
         .pixel_map(pixel_map)
     );
 
-    reg [3:0] disx,disy; // 計算pixel與角色之間的距離 以16*16為單位
+    reg [5:0] disx,disy; // 計算pixel與角色之間的距離 以16*16為單位
     wire [3:0] char_distance,dis;
     always @(*) begin
         if((h_cnt>>1)>charactor_h) begin
@@ -79,7 +79,7 @@ module Screen (
         end
     end
     
-    assign char_distance = disx+disy > 16 ? 16 :disx+disy;
+    assign char_distance = disx+disy > 15 ? 15 :disx+disy;
 
 
     //判斷pixel從哪個module拿 + 分配
