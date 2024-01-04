@@ -29,7 +29,7 @@ module Map (
     end
 
     always @(posedge clk or posedge rst) begin
-        if(rst) begin
+        if(rst || state==3'b010) begin
             map <= { //最外圈須維持NONE
                 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 
                 3'd0, 3'd1, 3'd1, 3'd1, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd1, 3'd0, 3'd1, 3'd0, 3'd0, 3'd1, 3'd0, 3'd1, 3'd1, 3'd1, 3'd0, 
@@ -47,8 +47,7 @@ module Map (
                 3'd0, 3'd0, 3'd1, 3'd1, 3'd1, 3'd1, 3'd1, 3'd1, 3'd0, 3'd1, 3'd1, 3'd0, 3'd0, 3'd1, 3'd1, 3'd1, 3'd1, 3'd0, 3'd0, 3'd0, 
                 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0
             };
-        end
-        else if(state==3'b011) begin//win scene
+        end else if(state==3'b011) begin//win scene
             map <={
                 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 
                 3'd0, 3'd1, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd1, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 3'd0, 
