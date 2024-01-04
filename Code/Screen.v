@@ -62,6 +62,26 @@ module Screen (
         .pixel_map(pixel_map)
     );
 
+    reg [5:0] disx,disy; // 計算pixel與角色之間的距離 以16*16為單位
+    wire [3:0] char_distance;
+    always @(*) begin
+        if((h_cnt>>1)>charactor_h) begin
+            disx = ((h_cnt>>1)-charactor_h)>>4;
+        end else begin
+            disx = (charactor_h-(h_cnt>>1))>>4;
+        end
+    end
+    always @(*) begin
+        if((v_cnt>>1) > charactor_v) begin
+            disy = ((v_cnt>>1)-charactor_v) >>4;
+        end else begin
+            disy = (charactor_v-(v_cnt>>1)) >>4;
+        end
+    end
+
+    assign char_distance = (disx + disy)%2 ? disx + disy-1 : disx + disy;
+
+
     //判斷pixel從哪個module拿 + 分配
     always @(*) begin
         case (state)
@@ -80,7 +100,11 @@ module Screen (
             default: pixel <= 0;
         endcase
     end
-    assign {vgaRed, vgaGreen, vgaBlue} = (valid ? pixel : 0);
+    wire [3:0] Redtem,Greentem,Bluetem;//vgaRed, vgaGreen, vgaBlue
+    assign {Redtem,Greentem,Bluetem} = (valid ? pixel : 0);
+    assign vgaRed   = (state==GAME) ? (((Redtem   - char_distance) >=0) ? Redtem   - char_distance : 0) : Redtem;//離角色越遠 顏色會被設定的越暗
+    assign vgaGreen = (state==GAME) ? (((Greentem - char_distance) >=0) ? Greentem - char_distance : 0) : Greentem;
+    assign vgaBlue  = (state==GAME) ? (((Bluetem  - char_distance) >=0) ? Bluetem  - char_distance : 0) : Bluetem;
 
 endmodule
 
