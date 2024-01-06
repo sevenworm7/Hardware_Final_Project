@@ -8,6 +8,7 @@ module Voice (
     input [2:0] state,
     input volUP,
     input volDOWN,
+    input sound_effect, //音效 //拉起一個clk posedge後播放
     output reg [2:0] volume,
     output audio_mclk, 
     output audio_lrck, 
@@ -15,8 +16,8 @@ module Voice (
     output audio_sdin 
 );
     //declaration
-    wire [11:0] ibeat;
-    wire [31:0] toneL, toneR;
+    wire [11:0] ibeat, ibeat_s;
+    wire [31:0] toneL, toneR, toneL_s;
     wire [21:0] note_div_left, note_div_right;
     wire [15:0] audio_in_left, audio_in_right;
 
@@ -30,10 +31,13 @@ module Voice (
 
     //Player Control
     Player_control player_control( 
+        .clk(clk),
         .div_22(div_22),
         .rst(rst),
         .state(state),
-        .ibeat(ibeat) //output
+        .sound_effect(sound_effect),
+        .ibeat(ibeat),    //output
+        .ibeat_s(ibeat_s) //output
     );
 
     //Music module
@@ -43,8 +47,14 @@ module Voice (
         .toneR(toneR) //output
     );
 
+    //Sound effect
+    Sound_effect se(
+        .ibeat_s(ibeat_s),
+        .toneL(toneL_s) //output //切掉鋼琴左手
+    );
+
     //Note generation
-    assign note_div_left = (50000000 / toneL);
+    assign note_div_left = ((ibeat_s != 0) ? (50000000 / toneL_s) : (50000000 / toneL));
     assign note_div_right = (50000000 / toneR);
     Note_gen note_gen(
         .clk(clk), 
@@ -70,10 +80,13 @@ module Voice (
 endmodule
 
 module Player_control (
+    input clk,
 	input div_22, 
 	input rst, 
 	input [2:0] state, 
-	output reg [11:0] ibeat
+    input sound_effect,
+	output reg [11:0] ibeat,
+    output reg [11:0] ibeat_s
 );
     parameter INIT = 3'b000;
     parameter WAIT = 3'b001;
@@ -82,6 +95,9 @@ module Player_control (
     parameter LOSE = 3'b100;
 
 	parameter LEN = 864; //16 * 3 * 18
+    parameter LEN_s = 64; //16 * 4 * 1
+
+    reg mode;
 
 	always @(posedge div_22 or posedge rst) begin
         if(rst) ibeat <= 0;
@@ -96,6 +112,19 @@ module Player_control (
             endcase
         end
 	end
+
+    //sound effect control
+    always @(posedge clk) begin
+        if(sound_effect) mode <= 1'b1;
+        else if(ibeat_s != 0) mode <= 1'b0;
+        else mode <= mode;
+    end
+    always @(posedge div_22 or posedge rst) begin
+        if(rst) ibeat_s <= 0;
+        else if(mode) ibeat_s <= 1;
+        else if(ibeat_s != 0) ibeat_s <= ((ibeat_s < LEN_s) ? (ibeat_s + 1) : 0);
+        else ibeat_s <= 0;
+    end
 
 endmodule
 
@@ -1084,6 +1113,53 @@ module Music(
             12'd860 : toneL =    `sil;  12'd861 : toneL =    `sil;
             12'd862 : toneL =    `sil;  12'd863 : toneL =    `sil;
             default : toneL =    `sil;
+        endcase
+    end
+
+endmodule
+
+module Sound_effect (
+    input [11:0] ibeat_s,
+    output reg [31:0] toneL_s
+);
+    always @* begin
+        case(ibeat_s)
+            //1 1
+            12'd0   : toneL_s = 32'd988;  12'd1   : toneL_s = 32'd988;
+            12'd2   : toneL_s = 32'd988;  12'd3   : toneL_s =    `sil;
+            12'd4   : toneL_s = 32'd1319;  12'd5   : toneL_s = 32'd1319;
+            12'd6   : toneL_s = 32'd1319;  12'd7   : toneL_s = 32'd1319;
+            12'd8   : toneL_s = 32'd1319;  12'd9   : toneL_s = 32'd1319;
+            12'd10  : toneL_s = 32'd1319;  12'd11  : toneL_s = 32'd1319;
+            12'd12  : toneL_s = 32'd1319;  12'd13  : toneL_s = 32'd1319;
+            12'd14  : toneL_s = 32'd1319;  12'd15  : toneL_s = 32'd1319;
+            //1 2
+            12'd16  : toneL_s = 32'd1319;  12'd17  : toneL_s = 32'd1319;
+            12'd18  : toneL_s = 32'd1319;  12'd19  : toneL_s = 32'd1319;
+            12'd20  : toneL_s = 32'd1319;  12'd21  : toneL_s = 32'd1319;
+            12'd22  : toneL_s = 32'd1319;  12'd23  : toneL_s = 32'd1319;
+            12'd24  : toneL_s = 32'd1319;  12'd25  : toneL_s = 32'd1319;
+            12'd26  : toneL_s = 32'd1319;  12'd27  : toneL_s = 32'd1319;
+            12'd28  : toneL_s = 32'd1319;  12'd29  : toneL_s = 32'd1319;
+            12'd30  : toneL_s = 32'd1319;  12'd31  : toneL_s =    `sil;
+            //1 3
+            12'd32  : toneL_s = 32'd1319;  12'd33  : toneL_s = 32'd1319;
+            12'd34  : toneL_s = 32'd1319;  12'd35  : toneL_s = 32'd1319;
+            12'd36  : toneL_s = 32'd1319;  12'd37  : toneL_s = 32'd1319;
+            12'd38  : toneL_s = 32'd1319;  12'd39  : toneL_s =    `sil;
+            12'd40  : toneL_s =    `sil;  12'd41  : toneL_s =    `sil;
+            12'd42  : toneL_s =    `sil;  12'd43  : toneL_s =    `sil;
+            12'd44  : toneL_s =    `sil;  12'd45  : toneL_s =    `sil;
+            12'd46  : toneL_s =    `sil;  12'd47  : toneL_s =    `sil;
+            //1 4
+            12'd48  : toneL_s =    `sil;  12'd49  : toneL_s =    `sil;
+            12'd50  : toneL_s =    `sil;  12'd51  : toneL_s =    `sil;
+            12'd52  : toneL_s =    `sil;  12'd53  : toneL_s =    `sil;
+            12'd54  : toneL_s =    `sil;  12'd55  : toneL_s =    `sil;
+            12'd56  : toneL_s =    `sil;  12'd57  : toneL_s =    `sil;
+            12'd58  : toneL_s =    `sil;  12'd59  : toneL_s =    `sil;
+            12'd60  : toneL_s =    `sil;  12'd61  : toneL_s =    `sil;
+            12'd62  : toneL_s =    `sil;  12'd63  : toneL_s =    `sil;
         endcase
     end
 
