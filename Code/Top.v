@@ -32,6 +32,7 @@ module Top (
 
     //declaration
     wire div_2, div_15, div_22, div_hsec; //半秒clk
+    wire all_star_collect; //whether 3 stars are collected
     wire volUP, volDOWN;
     wire [2:0] key_num;
     wire key; //按鍵按下會持續為1
@@ -62,7 +63,7 @@ module Top (
                     else state <= state;
                 end
                 GAME: begin
-                    if(charactor_h>16*13 && charactor_h <16*14 && charactor_v>16*11 && charactor_v <16*12) state <= WIN; //do
+                    if(charactor_h>16*13 && charactor_h <16*14 && charactor_v>16*11 && charactor_v <16*12 && all_star_collect) state <= WIN; //do
                     else if((!time_left[0] && !time_left[1] && !time_left[2]) 
                     || (curr_hp == 1'b0)) 
                         state <= LOSE;
@@ -205,6 +206,7 @@ module Top (
         .charactor_h(charactor_h), //max for 320
         .charactor_v(charactor_v), //max for 240
         .charactor_dir(charactor_dir), //0:left, 1:right
+        .all_star_collect(all_star_collect),
         .vgaRed(vgaRed),    
         .vgaGreen(vgaGreen),  
         .vgaBlue(vgaBlue),   

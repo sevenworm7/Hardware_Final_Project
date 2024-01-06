@@ -6,6 +6,7 @@ module Screen (
     input [8:0] charactor_h,
     input [8:0] charactor_v,
     input charactor_dir,
+    output all_star_collect, //whether 3 stars are collected
     output [3:0] vgaRed,    
     output [3:0] vgaGreen,
     output [3:0] vgaBlue,   
@@ -20,11 +21,13 @@ module Screen (
 
     wire valid;
     wire [9:0] h_cnt, v_cnt; //640 480
-    wire on_char; //whether on charactor
-    wire [11:0] pixel_char, pixel_map;
+    wire on_char,on_starA,on_starB,on_starC; //whether on charactor
+    wire [11:0] pixel_char, pixel_map,pixel_starA,pixel_starB,pixel_starC;
     reg [4:0] map_h, map_v; //coordinate to map //20*15
     reg [3:0] pigeon_h, pigeon_v; //16*16
     reg [11:0] pixel;
+    reg star_countA, star_countB,star_countC;
+    assign all_star_collect = star_countA & star_countB & star_countC;
 
     //vga control
     Vga_controller vga_controller(
@@ -53,12 +56,39 @@ module Screen (
         .on_char(on_char), //whether on charactor
         .pixel_char(pixel_char)
     );
+
+    Data_star data_starA(//stars that you need to collect before reaching the door
+        .star_h(1*16+7),
+        .star_v(1*16+7),
+        .h_cnt(h_cnt), //640 -> 320
+        .v_cnt(v_cnt), //480 -> 240
+        .on_star(on_starA), //whether on star
+        .pixel_star(pixel_starA) 
+    );
+    Data_star data_starB(//stars that you need to collect before reaching the door
+        .star_h(6*16+7),
+        .star_v(6*16+7),
+        .h_cnt(h_cnt), //640 -> 320
+        .v_cnt(v_cnt), //480 -> 240
+        .on_star(on_starB), //whether on star
+        .pixel_star(pixel_starB) 
+    );
+    Data_star data_starC(//stars that you need to collect before reaching the door
+        .star_h(14*16+7),
+        .star_v(1*16+7),
+        .h_cnt(h_cnt), //640 -> 320
+        .v_cnt(v_cnt), //480 -> 240
+        .on_star(on_starC), //whether on star
+        .pixel_star(pixel_starC) 
+    );
+
     Data_map data_map( 
         .map(map),
         .map_h(map_h),
         .map_v(map_v),
         .pigeon_h(pigeon_h),
         .pigeon_v(pigeon_v),
+        .all_star_collect(all_star_collect),
         .pixel_map(pixel_map)
     );
 
@@ -85,10 +115,31 @@ module Screen (
     //判斷pixel從哪個module拿 + 分配
     always @(*) begin
         case (state)
-            INIT: pixel <= 0;
-            WAIT: pixel <= 0;
+            INIT:begin
+                pixel <= 0;
+                star_countA <=0;
+                star_countB <=0;
+                star_countC <=0;
+            end 
+            WAIT: begin
+                pixel <= 0;
+                star_countA <=0;
+                star_countB <=0;
+                star_countC <=0;
+            end
             GAME: begin
-                if(on_char) pixel <= pixel_char;
+                if(on_char) begin
+                    pixel <=pixel_char;
+                    if(charactor_h >16 && charactor_h<32 && charactor_v>16 && charactor_v <32) 
+                        star_countA <=1;
+                    else if(charactor_h>96  && charactor_h < 112 && charactor_v >96 && charactor_v <112) 
+                        star_countB <=1;
+                    else if(charactor_h>224  && charactor_h < 240 && charactor_v >16 && charactor_v <32)
+                        star_countC <=1;
+                end
+                else if(on_starA && star_countA ==0) pixel <= pixel_starA;
+                else if(on_starB && star_countB ==0) pixel <= pixel_starB;
+                else if(on_starC && star_countC ==0) pixel <= pixel_starC;
                 else pixel <= pixel_map;
             end 
             WIN: begin
@@ -97,9 +148,15 @@ module Screen (
             LOSE: begin
                 pixel <= pixel_map;
             end
-            default: pixel <= 0;
+            default: begin
+                pixel <= 0;
+                star_countA <=0;
+                star_countB <=0;
+                star_countC <=0;
+            end
         endcase
     end
+
     wire [3:0] Redtem,Greentem,Bluetem;//vgaRed, vgaGreen, vgaBlue
     assign {Redtem,Greentem,Bluetem} = (valid ? pixel : 0);
     assign vgaRed   = (state==GAME) ? ((Redtem>char_distance) ? (Redtem   - char_distance) : 0) : Redtem;//離角色越遠 顏色會被設定的越暗
@@ -232,6 +289,7 @@ module Data_map (
     input [4:0] map_v,
     input [3:0] pigeon_h, //16*16
     input [3:0] pigeon_v,
+    input all_star_collect,
     output reg [11:0] pixel_map //rgb
 );  
     parameter NONE = 3'd0;
@@ -284,10 +342,7 @@ module Data_map (
                 pixel_map = DATA_LINE[ pigeon_h + pigeon_v*16 ]; //red
             end
             TERMINAL: begin
-                pixel_map = 12'hA0A; //purple
-            end
-            STAR: begin
-                pixel_map = 12'hAA0;//yellow
+                pixel_map = all_star_collect ? 12'hA0A : 12'h622; //purple/brown
             end
             default: begin
                 pixel_map = 12'h000; //black 
@@ -295,4 +350,50 @@ module Data_map (
         endcase
     end
 
+endmodule
+
+
+module Data_star(
+    input [8:0] star_h,
+    input [8:0] star_v,
+    input [9:0] h_cnt, //640 -> 320
+    input [9:0] v_cnt, //480 -> 240
+    input on_char,
+    output reg on_star, //whether on charactor
+    output reg [11:0] pixel_star //rgb //用hex表示剛好各一位數
+);
+    wire [8:0] h,v;
+    assign h = h_cnt[9:1]; //320
+    assign v = v_cnt[9:1]; //240
+    parameter [11:0] DATA [0:255] = { //16*16 //https://www.pinterest.com/pin/star-silhouette-pixel-art-in-2023--8233211825325023/
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 
+        12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000
+    }; //take 7+7*16 as center
+
+
+    always @(*) begin
+        if((h-8 < star_h && star_h < h+9) 
+        && (v-8 < star_v && star_v < v+9)) begin
+            pixel_star = DATA[ ((h-star_h)+8) + ((v-star_v)+8)*16 ];
+            on_star = (pixel_star != 12'h000);
+        end
+        else begin
+            pixel_star = 12'h000;
+            on_star = 1'b0;
+        end
+    end
 endmodule
