@@ -7,6 +7,9 @@ module Screen (
     input [8:0] charactor_v,
     input charactor_dir,
     output all_star_collect, //whether 3 stars are collected
+    output reg star_countA,
+    output reg star_countB,
+    output reg star_countC,
     output [3:0] vgaRed,    
     output [3:0] vgaGreen,
     output [3:0] vgaBlue,   
@@ -26,7 +29,6 @@ module Screen (
     reg [4:0] map_h, map_v; //coordinate to map //20*15
     reg [3:0] pigeon_h, pigeon_v; //16*16
     reg [11:0] pixel;
-    reg star_countA, star_countB,star_countC;
     assign all_star_collect = star_countA & star_countB & star_countC;
 
     //vga control
@@ -358,7 +360,6 @@ module Data_star(
     input [8:0] star_v,
     input [9:0] h_cnt, //640 -> 320
     input [9:0] v_cnt, //480 -> 240
-    input on_char,
     output reg on_star, //whether on charactor
     output reg [11:0] pixel_star //rgb //用hex表示剛好各一位數
 );
@@ -396,4 +397,35 @@ module Data_star(
             on_star = 1'b0;
         end
     end
+endmodule
+
+module Data_trap(
+    input [8:0] trap_h,
+    input [8:0] trap_v,
+    input [9:0] h_cnt, //640 -> 320
+    input [9:0] v_cnt, //480 -> 240
+    output reg on_trap, //whether on charactor
+    output reg [11:0] pixel_trap //rgb //用hex表示剛好各一位數
+);
+    wire [8:0] h,v;
+    assign h = h_cnt[9:1]; //320
+    assign v = v_cnt[9:1]; //240
+    parameter [11:0] DATA [0:255] = { //16*16 //https://www.pinterest.com/pin/star-silhouette-pixel-art-in-2023--8233211825325023/
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'hF00, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'hF00, 12'hF00, 12'hF00, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'hF00, 12'hF00, 12'hF00, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'hF00, 12'hF00, 12'hF00, 12'hF00, 12'hF00, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'hF00, 12'hF00, 12'hF00, 12'hF00, 12'hF00, 12'hF00, 
+        12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 
+        12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h000, 12'h00F, 12'h00F, 12'h000
+    }; //take 7+7*16 as center
 endmodule

@@ -32,7 +32,8 @@ module Top (
 
     //declaration
     wire div_2, div_15, div_22, div_hsec; //半秒clk
-    wire all_star_collect; //whether 3 stars are collected
+    wire all_star_collect,star_countA,star_countB,star_countC,sound_effect; //whether 3 stars are collected
+    wire opA,opB,opC;
     wire volUP, volDOWN;
     wire [2:0] key_num;
     wire key; //按鍵按下會持續為1
@@ -65,7 +66,7 @@ module Top (
                 GAME: begin
                     if(charactor_h>16*13 && charactor_h <16*14 && charactor_v>16*11 && charactor_v <16*12 && all_star_collect) state <= WIN; //do
                     else if((!time_left[0] && !time_left[1] && !time_left[2]) 
-                    || (curr_hp == 1'b0)) 
+                    || (curr_hp == 0)) 
                         state <= LOSE;
                     else state <= state;
                 end
@@ -81,6 +82,24 @@ module Top (
             endcase
         end
     end
+    one_pulse oA(
+        .clk(clk),
+        .pb_in(star_countA),
+        .pb_out(opA)
+    );
+
+    one_pulse oB(
+        .clk(clk),
+        .pb_in(star_countB),
+        .pb_out(opB)
+    );
+
+    one_pulse oC(
+        .clk(clk),
+        .pb_in(star_countC),
+        .pb_out(opC)
+    );
+    assign sound_effect = opA|opB|opC;
 
     //clk div
     Clock_divider clock_divider(
@@ -103,7 +122,14 @@ module Top (
 
     //curr_hp
     always @(posedge clk) begin
-        curr_hp <= 3'd7;
+        case (state)
+            INIT: curr_hp <=3;
+            WAIT: curr_hp <=3;
+            GAME: begin
+                curr_hp <=3;
+            end 
+            default: curr_hp <=3;
+        endcase
     end
 
     //led 
@@ -207,6 +233,9 @@ module Top (
         .charactor_v(charactor_v), //max for 240
         .charactor_dir(charactor_dir), //0:left, 1:right
         .all_star_collect(all_star_collect),
+        .star_countA(star_countA),
+        .star_countB(star_countB),
+        .star_countC(star_countC),
         .vgaRed(vgaRed),    
         .vgaGreen(vgaGreen),  
         .vgaBlue(vgaBlue),   
@@ -224,6 +253,7 @@ module Top (
         .volUP(volUP),
         .volDOWN(volDOWN),
         .volume(volume),
+        .sound_effect(sound_effect),
         .audio_mclk(audio_mclk), 
         .audio_lrck(audio_lrck), 
         .audio_sck(audio_sck),  

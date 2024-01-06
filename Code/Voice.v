@@ -50,7 +50,7 @@ module Voice (
     //Sound effect
     Sound_effect se(
         .ibeat_s(ibeat_s),
-        .toneL(toneL_s) //output //切掉鋼琴左手
+        .toneL_s(toneL_s) //output //切掉鋼琴左手
     );
 
     //Note generation
