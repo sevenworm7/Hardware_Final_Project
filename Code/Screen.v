@@ -111,7 +111,7 @@ module Screen (
         end
     end
     
-    assign char_distance = disx+disy > 15 ? 15 :disx+disy;
+    assign char_distance = disx+disy > 7 ? 7 :disx+disy;
 
 
     //判斷pixel從哪個module拿 + 分配
@@ -161,9 +161,9 @@ module Screen (
 
     wire [3:0] Redtem,Greentem,Bluetem;//vgaRed, vgaGreen, vgaBlue
     assign {Redtem,Greentem,Bluetem} = (valid ? pixel : 0);
-    assign vgaRed   = (state==GAME) ? ((Redtem>char_distance) ? (Redtem   - char_distance) : 0) : Redtem;//離角色越遠 顏色會被設定的越暗
-    assign vgaGreen = (state==GAME) ? ((Greentem>char_distance) ? (Greentem - char_distance) : 0) : Greentem;
-    assign vgaBlue  = (state==GAME) ? ((Bluetem >char_distance) ? (Bluetem  - char_distance) : 0) : Bluetem;
+    assign vgaRed   = (state==GAME) ? ((Redtem>2*char_distance) ? (Redtem   - 2*char_distance ) : 0) : Redtem;//離角色越遠 顏色會被設定的越暗
+    assign vgaGreen = (state==GAME) ? ((Greentem>2*char_distance) ? (Greentem -2* char_distance ) : 0) : Greentem;
+    assign vgaBlue  = (state==GAME) ? ((Bluetem > 2*char_distance) ? (Bluetem  - 2*char_distance) : 0) : Bluetem;
 
 endmodule
 
