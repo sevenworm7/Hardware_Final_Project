@@ -151,10 +151,10 @@ module Top (
             time_left[1] <= time_left[1];
             time_left[0] <= time_left[0];
         end
-        else if(state != GAME) begin //4 min 44 sec
-            time_left[2] <= 4'd4;
+        else if(state != GAME) begin 
+            time_left[2] <= 4'd1;
             time_left[1] <= 4'd4;
-            time_left[0] <= 4'd4;
+            time_left[0] <= 4'd7;
         end
         else begin
             time_left[2] <= (((time_left[1]==1'b0) && (time_left[0]==1'b0)) ? (time_left[2]-1) : time_left[2]);
